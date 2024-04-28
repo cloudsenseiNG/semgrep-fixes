@@ -1,0 +1,37 @@
+name: Semgrep
+
+on:
+
+  pull_request: {}
+
+  push:
+    branches: ["master", "main"]
+    paths:
+    - .github/workflows/sem.yml
+
+jobs:
+  semTest:
+      strategy:
+        matrix:
+          subdir:
+            - m repo   
+      runs-on: ubuntu-latest
+      steps:
+      - uses: actions/checkout@v4
+      - name: Set up Python 3.8
+        uses: actions/setup-python@v2
+        with:
+          python-version: 3.8
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install semgrep 
+      - name: Checkout-repo
+        uses: actions/checkout@v4     
+      - name: Run Semgrep
+        env:
+          SEMGREP_APP_TOKEN: ${{ secrets.SEMGREP_APP_TOKEN }}
+          SEMGREP_BASELINE_REF: main
+          SEMGREP_REPO_DISPLAY_NAME: monorepo-test--${{ matrix.subdir }}
+        run: |
+          semgrep ci --include=$SEMGREP_REPO_DISPLAY_NAME

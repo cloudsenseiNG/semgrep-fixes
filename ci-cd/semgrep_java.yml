@@ -1,0 +1,50 @@
+# Name of this GitHub Actions workflow.
+name: Semgrep
+on:
+
+  pull_request: {}
+
+  push:
+    branches: ["master", "main"]
+    paths:
+    - .github/workflows/semgrep.yml
+
+jobs:
+  build-gradle-project:
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v4
+    - name: Set up JDK 17
+      uses: actions/setup-java@v3
+      with:
+        java-version: '17'
+        distribution: 'temurin'  
+    - name: Checkout project sources
+      uses: actions/checkout@v4
+    - name: Setup Gradle
+      uses: gradle/gradle-build-action@v2
+    # - name: Run build with Gradle Wrapper
+    #   run: ./gradlew build
+    - name: Build gradle lockfile
+      run: ./gradlew printAllDependencies --write-locks
+    - name: Upload Gradle Lock File
+      uses: actions/upload-artifact@v3
+      with:
+        name: gradlelockfile
+        path: ./app/gradle.lockfile 
+
+  semgrep:
+    needs: build-gradle-project
+    name: Scan
+    runs-on: ubuntu-latest
+    env:
+      SEMGREP_APP_TOKEN: ${{ secrets.SEMGREP_APP_TOKEN }}
+    container:
+      image: returntocorp/semgrep
+    steps:
+      - uses: actions/checkout@v4
+      - name: Download artifact from previous job
+        uses: actions/download-artifact@v3
+        with:
+          name: gradlelockfile
+      - run: semgrep ci
